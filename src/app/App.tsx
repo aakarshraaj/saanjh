@@ -74,23 +74,16 @@ const content = {
   }
 };
 
-// Get or initialize visitor count
+// Get or initialize visitor count - increments on every visit
 function getVisitorCount(): number {
   if (typeof window === 'undefined') return 0;
   
   const stored = localStorage.getItem('saanjh_visitor_count');
-  const hasVisited = localStorage.getItem('saanjh_has_visited');
+  const currentCount = stored ? parseInt(stored, 10) : 0;
+  const newCount = currentCount + 1;
   
-  if (!hasVisited) {
-    // New visitor
-    const currentCount = stored ? parseInt(stored, 10) : 0;
-    const newCount = currentCount + 1;
-    localStorage.setItem('saanjh_visitor_count', newCount.toString());
-    localStorage.setItem('saanjh_has_visited', 'true');
-    return newCount;
-  }
-  
-  return stored ? parseInt(stored, 10) : 1;
+  localStorage.setItem('saanjh_visitor_count', newCount.toString());
+  return newCount;
 }
 
 export default function App() {

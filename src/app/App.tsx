@@ -74,16 +74,27 @@ const content = {
   }
 };
 
-// Get or initialize visitor count - increments on every visit
-function getVisitorCount(): number {
-  if (typeof window === 'undefined') return 0;
-  
-  const stored = localStorage.getItem('saanjh_visitor_count');
-  const currentCount = stored ? parseInt(stored, 10) : 0;
-  const newCount = currentCount + 1;
-  
-  localStorage.setItem('saanjh_visitor_count', newCount.toString());
-  return newCount;
+// Fetch and increment global visitor count from API
+async function getVisitorCount(): Promise<number> {
+  try {
+    const response = await fetch('/api/visitor-count', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to fetch visitor count');
+    }
+    
+    const data = await response.json();
+    return data.count || 1;
+  } catch (error) {
+    console.error('Error fetching visitor count:', error);
+    // Fallback to 1 if API fails
+    return 1;
+  }
 }
 
 export default function App() {
@@ -92,7 +103,7 @@ export default function App() {
   const [timeOnPage, setTimeOnPage] = useState(0);
   const [dimLevel, setDimLevel] = useState(0); // 0 to 3 clicks
   const [showHiddenMessage, setShowHiddenMessage] = useState(false);
-  const [visitorCount] = useState(() => getVisitorCount());
+  const [visitorCount, setVisitorCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   
@@ -107,6 +118,13 @@ export default function App() {
     const handler = (e: MediaQueryListEvent) => setPrefersReducedMotion(e.matches);
     mediaQuery.addEventListener('change', handler);
     return () => mediaQuery.removeEventListener('change', handler);
+  }, []);
+
+  // Fetch global visitor count on mount
+  useEffect(() => {
+    getVisitorCount().then((count) => {
+      setVisitorCount(count);
+    });
   }, []);
   
   // Loading state - wait for fonts to load

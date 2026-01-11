@@ -18,21 +18,37 @@ export default async function handler(
   }
 
   try {
-    // Try to use Upstash Redis if available (requires setup in Vercel dashboard)
-    // Upstash Redis is available through Vercel Marketplace
-    const redis = process.env.UPSTASH_REDIS_REST_URL 
-      ? await import('@upstash/redis').then(m => m.Redis.fromEnv())
-      : null;
+    // Try to use Upstash Redis/KV if available (requires setup in Vercel dashboard)
+    // Check for various possible environment variable names that Vercel might provide
+    const redisUrl = process.env.UPSTASH_REDIS_REST_URL || 
+                     process.env.KV_REST_API_URL || 
+                     process.env.REDIS_URL;
+    const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN || 
+                       process.env.KV_REST_API_TOKEN;
+    
+    let redis = null;
+    if (redisUrl && redisToken) {
+      try {
+        const { Redis } = await import('@upstash/redis');
+        // Create Redis client with explicit URL and token
+        redis = new Redis({
+          url: redisUrl,
+          token: redisToken,
+        });
+      } catch (importError) {
+        console.error('Failed to import or initialize Redis:', importError);
+      }
+    }
     
     if (redis) {
       // Use Upstash Redis for persistent storage
       if (request.method === 'POST') {
-        const currentCount = await redis.get<number>('saanjh_visitor_count') || 0;
+        const currentCount = (await redis.get('saanjh_visitor_count') as number) || 0;
         const newCount = currentCount + 1;
         await redis.set('saanjh_visitor_count', newCount);
         return response.status(200).json({ count: newCount });
       } else {
-        const count = await redis.get<number>('saanjh_visitor_count') || 0;
+        const count = (await redis.get('saanjh_visitor_count') as number) || 0;
         return response.status(200).json({ count });
       }
     } else {
